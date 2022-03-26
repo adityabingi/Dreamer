@@ -1,0 +1,14 @@
+cloudpickle==1.3.0
+dm-control==1.0.1
+gym==0.17.3
+imageio==2.4.1
+moviepy==0.2.3.5
+mujoco==2.1.3
+numpy==1.21.5
+pandas==1.3.5
+pickleshare==0.7.5
+piglet==1.0.0
+piglet-templates==1.2.0
+Pillow==7.1.2
+tensorboardX==2.5
+torch @ https://download.pytorch.org/whl/cu111/torch-1.10.0%2Bcu111-cp37-cp37m-linux_x86_64.whl
