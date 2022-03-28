@@ -9,7 +9,7 @@ class DeepMindControl:
 
   def __init__(self, name, size=(64, 64), camera=None):
 
-    domain, task = name.split('_')
+    domain, task = name.split('-', 1)
     if domain == 'cup':  # Only domain with multiple words.
       domain = 'ball_in_cup'
     if isinstance(domain, str):

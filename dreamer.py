@@ -123,7 +123,7 @@ class Dreamer:
         prior_dist = self.rssm.get_dist(prior['mean'], prior['std'])
         post_dist = self.rssm.get_dist(self.posterior['mean'], self.posterior['std'])
 
-        kl_loss = torch.mean(distributions.kl.kl_divergence(prior_dist, post_dist))
+        kl_loss = torch.mean(distributions.kl.kl_divergence(post_dist, prior_dist))
         kl_loss = torch.max(kl_loss, kl_loss.new_full(kl_loss.size(), self.args.free_nats))
 
         obs_loss = -torch.mean(obs_dist.log_prob(obs))
