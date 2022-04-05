@@ -112,7 +112,8 @@ class Dreamer:
 
     def world_model_loss(self, obs, acs, rews, nonterms):
 
-        obs_embed = self.obs_encoder(preprocess_obs(obs))
+        obs = preprocess_obs(obs)
+        obs_embed = self.obs_encoder(obs)
         init_state = self.rssm.init_state(self.args.batch_size, self.device)
         prior, self.posterior = self.rssm.observe_rollout(obs_embed, acs, nonterms, init_state, self.args.train_seq_len)
         features = torch.cat([self.posterior['stoch'], self.posterior['deter']], dim=-1)
