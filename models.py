@@ -183,7 +183,8 @@ class ConvDecoder(nn.Module):
             in_ch = 32*self.depth if i==0 else self.depth * (2 ** (len(self.kernels)-1-i))
             out_ch = output_shape[0] if i== len(self.kernels)-1 else self.depth * (2 ** (len(self.kernels)-2-i))
             layers.append(nn.ConvTranspose2d(in_ch, out_ch, kernel_size, stride=2))
-            layers.append(self.act_fn)
+            if i!=len(self.kernels)-1:
+                layers.append(self.act_fn)
 
         self.convtranspose = nn.Sequential(*layers)
 
