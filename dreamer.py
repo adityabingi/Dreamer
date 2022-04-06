@@ -113,9 +113,9 @@ class Dreamer:
     def world_model_loss(self, obs, acs, rews, nonterms):
 
         obs = preprocess_obs(obs)
-        obs_embed = self.obs_encoder(obs)
+        obs_embed = self.obs_encoder(obs[1:])
         init_state = self.rssm.init_state(self.args.batch_size, self.device)
-        prior, self.posterior = self.rssm.observe_rollout(obs_embed, acs, nonterms, init_state, self.args.train_seq_len)
+        prior, self.posterior = self.rssm.observe_rollout(obs_embed, acs[:-1], nonterms[:-1], init_state, self.args.train_seq_len-1)
         features = torch.cat([self.posterior['stoch'], self.posterior['deter']], dim=-1)
         rew_dist = self.reward_model(features)
         obs_dist = self.obs_decoder(features)
@@ -127,9 +127,9 @@ class Dreamer:
         kl_loss = torch.mean(distributions.kl.kl_divergence(post_dist, prior_dist))
         kl_loss = torch.max(kl_loss, kl_loss.new_full(kl_loss.size(), self.args.free_nats))
 
-        obs_loss = -torch.mean(obs_dist.log_prob(obs))
-        rew_loss = -torch.mean(rew_dist.log_prob(rews))
-        disc_loss = -torch.mean(disc_dist.log_prob(nonterms))
+        obs_loss = -torch.mean(obs_dist.log_prob(obs[1:]))
+        rew_loss = -torch.mean(rew_dist.log_prob(rews[:-1]))
+        disc_loss = -torch.mean(disc_dist.log_prob(nonterms[:-1]))
 
         model_loss = self.args.kl_loss_coeff * kl_loss + obs_loss + rew_loss + self.args.disc_loss_coeff * disc_loss
 

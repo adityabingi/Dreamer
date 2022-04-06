@@ -47,14 +47,6 @@ class ReplayBuffer:
 
     def sample(self):
         n = self.batch_size
-        l = self.seq_len+1
+        l = self.seq_len
         obs,acs,rews,terms= self._retrieve_batch(np.asarray([self._sample_idx(l) for _ in range(n)]), n, l)
-        obs,acs,rews,terms = self._shift_sequences(obs,acs,rews,terms)
         return obs,acs,rews,terms
-
-    def _shift_sequences(self, obs, actions, rewards, terminals):
-        obs = obs[1:]
-        actions = actions[:-1]
-        rewards = rewards[:-1]
-        terminals = terminals[:-1]
-        return obs, actions, rewards, terminals
