@@ -30,7 +30,7 @@ class DeepMindControl:
           spaces[key] = gym.spaces.Box(
               -np.inf, np.inf, value.shape, dtype=np.float32)
         spaces['image'] = gym.spaces.Box(
-            0, 255, self._size + (3,), dtype=np.uint8)
+            0, 255, (3,) + self._size , dtype=np.uint8)
         return gym.spaces.Dict(spaces)
 
     @property
@@ -41,7 +41,7 @@ class DeepMindControl:
     def step(self, action):
         time_step = self._env.step(action)
         obs = dict(time_step.observation)
-        obs['image'] = self.render()
+        obs['image'] = self.render().transpose(2, 0, 1).copy()
         reward = time_step.reward or 0
         done = time_step.last()
         info = {'discount': np.array(time_step.discount, np.float32)}
@@ -50,7 +50,7 @@ class DeepMindControl:
     def reset(self):
         time_step = self._env.reset()
         obs = dict(time_step.observation)
-        obs['image'] = self.render()
+        obs['image'] = self.render().transpose(2, 0, 1).copy()
         return obs
 
     def render(self, *args, **kwargs):

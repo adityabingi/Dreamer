@@ -149,7 +149,7 @@ class ConvEncoder(nn.Module):
         
         layers = []
         for i, kernel_size in enumerate(self.kernels):
-            in_ch = input_shape[-1] if i==0 else self.depth * (2 ** (i-1))
+            in_ch = input_shape[0] if i==0 else self.depth * (2 ** (i-1))
             out_ch = self.depth * (2 ** i)
             layers.append(nn.Conv2d(in_ch, out_ch, kernel_size, stride=2))
             layers.append(self.act_fn)
@@ -159,7 +159,6 @@ class ConvEncoder(nn.Module):
 
     def forward(self, inputs):
         reshaped = inputs.reshape(-1, *self.input_shape)
-        reshaped = reshaped.permute((0, 3, 1, 2)).contiguous()
         embed = self.conv_block(reshaped)
         embed = torch.reshape(embed, (*inputs.shape[:-3], -1))
         embed = self.fc(embed)
@@ -182,7 +181,7 @@ class ConvDecoder(nn.Module):
         layers = []
         for i, kernel_size in enumerate(self.kernels):
             in_ch = 32*self.depth if i==0 else self.depth * (2 ** (len(self.kernels)-1-i))
-            out_ch = output_shape[-1] if i== len(self.kernels)-1 else self.depth * (2 ** (len(self.kernels)-2-i))
+            out_ch = output_shape[0] if i== len(self.kernels)-1 else self.depth * (2 ** (len(self.kernels)-2-i))
             layers.append(nn.ConvTranspose2d(in_ch, out_ch, kernel_size, stride=2))
             layers.append(self.act_fn)
 
@@ -193,7 +192,6 @@ class ConvDecoder(nn.Module):
         out = self.dense(features)
         out = torch.reshape(out, [-1, 32*self.depth, 1, 1])
         out = self.convtranspose(out)
-        out = out.permute((0, 2, 3, 1)).contiguous()
         mean = torch.reshape(out, (*out_batch_shape, *self.output_shape))
 
         out_dist = distributions.independent.Independent(
