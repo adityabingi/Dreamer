@@ -50,9 +50,8 @@ class RSSM(nn.Module):
 
     def get_dist(self, mean, std):
 
-        scale_tril = torch.diag_embed(std)
-        distribution = distributions.MultivariateNormal(loc = mean, scale_tril = scale_tril)
-
+        distribution = distributions.Normal(mean, std)
+        distribution = distributions.independent.Independent(distribution, 1)
         return distribution
 
     def observe_step(self, prev_state, prev_action, obs_embed, nonterm=1.0):
@@ -62,7 +61,7 @@ class RSSM(nn.Module):
         posterior = self.fc_state_posterior(posterior_embed)
         mean, std = torch.chunk(posterior, 2, dim=-1)
         std = F.softplus(std) + 0.1
-        sample = self.get_dist(mean, std).sample()
+        sample = mean + torch.randn_like(mean) * std
 
         posterior = {'mean': mean, 'std': std, 'stoch': sample, 'deter': prior['deter']}
         return prior, posterior
@@ -74,7 +73,7 @@ class RSSM(nn.Module):
         prior_embed = self.act_fn(self.fc_embed_prior(deter))
         mean, std = torch.chunk(self.fc_state_prior(prior_embed), 2, dim=-1)
         std = F.softplus(std) + 0.1
-        sample = self.get_dist(mean, std).sample()
+        sample = mean + torch.randn_like(mean) * std
 
         prior = {'mean': mean, 'std': std, 'stoch': sample, 'deter': deter}
         return prior
