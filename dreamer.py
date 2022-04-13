@@ -242,7 +242,7 @@ class Dreamer:
                 if i!= collect_steps-1:
                     episode_rewards.append(0.0)
             else:
-                next_obs = obs
+                obs = next_obs
                 prev_state = posterior
                 prev_action = torch.tensor(action, dtype=torch.float32).to(self.device).unsqueeze(0)
 
