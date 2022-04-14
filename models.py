@@ -273,8 +273,9 @@ class ActionDecoder(nn.Module):
         out = self.action_model(features)
         mean, std = torch.chunk(out, 2, dim=-1) 
 
+        raw_init_std = np.log(np.exp(self._init_std)-1)
         action_mean = self._mean_scale * torch.tanh(mean / self._mean_scale)
-        action_std = F.softplus(std + self._init_std) + self._min_std
+        action_std = F.softplus(std + raw_init_std) + self._min_std
 
         dist = distributions.Normal(action_mean, action_std)
         dist = TransformedDistribution(dist, TanhBijector())
