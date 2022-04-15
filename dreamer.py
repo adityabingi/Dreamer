@@ -1,4 +1,5 @@
 import os
+import random
 import time
 import argparse
 import numpy as np
@@ -20,7 +21,7 @@ os.environ['MUJOCO_GL'] = 'egl'
 
 def make_env(args):
 
-    env = env_wrapper.DeepMindControl(args.env)
+    env = env_wrapper.DeepMindControl(args.env, args.seed)
     env = env_wrapper.ActionRepeat(env, args.action_repeat)
     env = env_wrapper.NormalizeActions(env)
     env = env_wrapper.TimeLimit(env, args.time_limit / args.action_repeat)
@@ -396,6 +397,7 @@ def main():
     if not(os.path.exists(logdir)):
         os.makedirs(logdir)
 
+    random.seed(seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
 
