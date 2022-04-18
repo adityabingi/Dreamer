@@ -272,7 +272,7 @@ class Dreamer:
                 episode_rew[i] += rew
 
                 if render:
-                    video_images[i].append(obs['image'])
+                    video_images[i].append(obs['image'].transpose(1,2,0).copy())
                 obs = next_obs
         return episode_rew, np.array(video_images[:self.args.max_videos_to_save])
 

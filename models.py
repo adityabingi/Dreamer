@@ -57,7 +57,7 @@ class RSSM(nn.Module):
     def observe_step(self, prev_state, prev_action, obs_embed, nonterm=1.0):
 
         prior = self.imagine_step(prev_state, prev_action, nonterm)
-        posterior_embed = self.act_fn(self.fc_embed_posterior(torch.cat([prior['deter'], obs_embed], dim=-1)))
+        posterior_embed = self.act_fn(self.fc_embed_posterior(torch.cat([obs_embed, prior['deter']], dim=-1)))
         posterior = self.fc_state_posterior(posterior_embed)
         mean, std = torch.chunk(posterior, 2, dim=-1)
         std = F.softplus(std) + 0.1
