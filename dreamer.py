@@ -56,6 +56,7 @@ class Dreamer:
                     hidden_size = self.args.deter_size,
                     obs_embed_size = self.args.obs_embed_size,
                     activation =self.args.dense_activation_function).to(self.device)
+
         self.actor = ActionDecoder(
                      action_size = self.action_size,
                      stoch_size = self.args.stoch_size,
@@ -87,24 +88,32 @@ class Dreamer:
                             n_layers = 3,
                             units = self.args.num_units,
                             activation= self.args.dense_activation_function,
-                            dist = 'normal').to(self.device)    
-        self.discount_model = DenseDecoder(
-                              stoch_size = self.args.stoch_size,
-                              deter_size = self.args.deter_size,
-                              output_shape = (1,),
-                              n_layers = 2,
-                              units=self.args.num_units,
-                              activation= self.args.dense_activation_function,
-                              dist = 'binary').to(self.device)
-
-        self.world_model_params = list(self.rssm.parameters()) + list(self.obs_encoder.parameters()) + list(self.obs_decoder.parameters()) \
-                                             + list(self.reward_model.parameters()) + list(self.discount_model.parameters())
+                            dist = 'normal').to(self.device) 
+        if self.args.use_disc_model:  
+          self.discount_model = DenseDecoder(
+                                stoch_size = self.args.stoch_size,
+                                deter_size = self.args.deter_size,
+                                output_shape = (1,),
+                                n_layers = 2,
+                                units=self.args.num_units,
+                                activation= self.args.dense_activation_function,
+                                dist = 'binary').to(self.device)
+        
+        if self.args.use_disc_model:
+          self.world_model_params = list(self.rssm.parameters()) + list(self.obs_encoder.parameters()) \
+              + list(self.obs_decoder.parameters()) + list(self.reward_model.parameters()) + list(self.discount_model.parameters())
+        else:
+          self.world_model_params = list(self.rssm.parameters()) + list(self.obs_encoder.parameters()) \
+              + list(self.obs_decoder.parameters()) + list(self.reward_model.parameters())
     
         self.world_model_opt = optim.Adam(self.world_model_params, self.args.model_learning_rate)
         self.value_opt = optim.Adam(self.value_model.parameters(), self.args.value_learning_rate)
         self.actor_opt = optim.Adam(self.actor.parameters(), self.args.actor_learning_rate)
 
-        self.world_model_modules = [self.rssm, self.obs_encoder, self.obs_decoder, self.reward_model, self.discount_model]
+        if self.args.use_disc_model:
+          self.world_model_modules = [self.rssm, self.obs_encoder, self.obs_decoder, self.reward_model, self.discount_model]
+        else:
+          self.world_model_modules = [self.rssm, self.obs_encoder, self.obs_decoder, self.reward_model]
         self.value_modules = [self.value_model]
         self.actor_modules = [self.actor]
 
@@ -120,7 +129,8 @@ class Dreamer:
         features = torch.cat([self.posterior['stoch'], self.posterior['deter']], dim=-1)
         rew_dist = self.reward_model(features)
         obs_dist = self.obs_decoder(features)
-        disc_dist = self.discount_model(features)
+        if self.args.use_disc_model:
+          disc_dist = self.discount_model(features)
 
         prior_dist = self.rssm.get_dist(prior['mean'], prior['std'])
         post_dist = self.rssm.get_dist(self.posterior['mean'], self.posterior['std'])
@@ -128,12 +138,16 @@ class Dreamer:
         kl_loss = torch.mean(distributions.kl.kl_divergence(post_dist, prior_dist))
         kl_loss = torch.max(kl_loss, kl_loss.new_full(kl_loss.size(), self.args.free_nats))
 
-        obs_loss = -torch.mean(obs_dist.log_prob(obs[1:]))
+        obs_loss = -torch.mean(obs_dist.log_prob(obs[1:])) 
         rew_loss = -torch.mean(rew_dist.log_prob(rews[:-1]))
-        disc_loss = -torch.mean(disc_dist.log_prob(nonterms[:-1]))
+        if self.args.use_disc_model:
+          disc_loss = -torch.mean(disc_dist.log_prob(nonterms[:-1]))
 
-        model_loss = self.args.kl_loss_coeff * kl_loss + obs_loss + rew_loss + self.args.disc_loss_coeff * disc_loss
-
+        if self.args.use_disc_model:
+          model_loss = self.args.kl_loss_coeff * kl_loss + obs_loss + rew_loss + self.args.disc_loss_coeff * disc_loss
+        else:
+          model_loss = self.args.kl_loss_coeff * kl_loss + obs_loss + rew_loss 
+        
         return model_loss
 
     def actor_loss(self):
@@ -149,18 +163,21 @@ class Dreamer:
         with FreezeParameters(self.world_model_modules + self.value_modules):
             imag_rew_dist = self.reward_model(self.imag_feat)
             imag_val_dist = self.value_model(self.imag_feat)
-            imag_disc_dist = self.discount_model(self.imag_feat)
 
-        imag_rews = imag_rew_dist.mean
-        imag_vals = imag_val_dist.mean
-        imag_discounts = self.args.discount *torch.round(imag_disc_dist.base_dist.probs)
+            imag_rews = imag_rew_dist.mean
+            imag_vals = imag_val_dist.mean
+            if self.args.use_disc_model:
+                imag_disc_dist = self.discount_model(self.imag_feat)
+                discounts = imag_disc_dist.mean().detach()
+            else:
+                discounts =  self.args.discount * torch.ones_like(imag_rews).detach()
 
-        self.returns = compute_return(imag_rews[:-1], imag_vals[:-1], imag_discounts[:-1], self.args.td_lambda, imag_vals[-1])
+        self.returns = compute_return(imag_rews[:-1], imag_vals[:-1],discounts[:-1] \
+                                         ,self.args.td_lambda, imag_vals[-1])
 
-        discounts = torch.cat([torch.ones_like(imag_discounts[:1]), imag_discounts[1:-1]])
-        self.discounts = torch.cumprod(discounts, 0)
+        discounts = torch.cat([torch.ones_like(discounts[:1]), discounts[1:-1]], 0)
+        self.discounts = torch.cumprod(discounts, 0).detach()
         actor_loss = -torch.mean(self.discounts * self.returns)
-
         return actor_loss
 
     def value_loss(self):
@@ -170,9 +187,9 @@ class Dreamer:
             discount   = self.discounts.detach()
             value_targ = self.returns.detach()
 
-        value_dist = self.value_model(value_feat)
-        value_loss = -torch.mean(discount * value_dist.log_prob(value_targ).unsqueeze(-1))
-
+        value_dist = self.value_model(value_feat)  
+        value_loss = -torch.mean(self.discounts * value_dist.log_prob(value_targ).unsqueeze(-1))
+        
         return value_loss
 
     def train_one_batch(self):
@@ -243,7 +260,7 @@ class Dreamer:
                 if i!= collect_steps-1:
                     episode_rewards.append(0.0)
             else:
-                obs = next_obs
+                obs = next_obs 
                 prev_state = posterior
                 prev_action = torch.tensor(action, dtype=torch.float32).to(self.device).unsqueeze(0)
 
@@ -292,9 +309,9 @@ class Dreamer:
                 obs = env.reset()
                 if i!= seed_steps-1:
                     seed_episode_rews.append(0.0)
+                done=False  
             else:
                 obs = next_obs
-                done=False
 
         return np.array(seed_episode_rews)
 
@@ -306,7 +323,7 @@ class Dreamer:
             'reward_model': self.reward_model.state_dict(),
             'obs_encoder': self.obs_encoder.state_dict(),
             'obs_decoder': self.obs_decoder.state_dict(),
-            'discount_model': self.discount_model.state_dict(),
+            'discount_model': self.discount_model.state_dict() if self.args.use_disc_model else None,
             'actor_optimizer': self.actor_opt.state_dict(),
             'value_optimizer': self.value_opt.state_dict(),
             'world_model_optimizer': self.world_model_opt.state_dict(),}, save_path)
@@ -319,7 +336,8 @@ class Dreamer:
         self.reward_model.load_state_dict(checkpoint['reward_model'])
         self.obs_encoder.load_state_dict(checkpoint['obs_encoder'])
         self.obs_decoder.load_state_dict(checkpoint['obs_decoder'])
-        self.discount_model.load_state_dict(checkpoint['discount_model'])
+        if self.args.use_disc_model and (checkpoint['discount_model'] is not None):
+            self.discount_model.load_state_dict(checkpoint['discount_model'])
 
         self.world_model_opt.load_state_dict(checkpoint['world_model_optimizer'])
         self.actor_opt.load_state_dict(checkpoint['actor_optimizer'])
@@ -357,6 +375,7 @@ def main():
     parser.add_argument('--batch-size', type=int, default=50, help='batch size')
     parser.add_argument('--train-seq-len', type=int, default=50, help='sequence length for training world model')
     parser.add_argument('--imagine-horizon', type=int, default=15, help='Latent imagination horizon')
+    parser.add_argument('--use-disc-model', action='store_true', help='whether to use discount model' )
     # Coeffecients and constants
     parser.add_argument('--free-nats', type=float, default=3, help='free nats')
     parser.add_argument('--discount', type=float, default=0.99, help='discount factor for actor critic')
@@ -373,12 +392,12 @@ def main():
     # Eval parameters
     parser.add_argument('--test', action='store_true', help='Test only')
     parser.add_argument('--test-interval', type=int, default=10000, help='Test interval (episodes)')
-    parser.add_argument('--test-episodes', type=int, default=5, help='Number of test episodes')
+    parser.add_argument('--test-episodes', type=int, default=10, help='Number of test episodes')
     # saving and checkpoint parameters
     parser.add_argument('--scalar-freq', type=int, default=1e3, help='scalar logging freq')
     parser.add_argument('--log-video-freq', type=int, default=-1, help='video logging frequency')
     parser.add_argument('--max-videos-to-save', type=int, default=2, help='max_videos for saving')
-    parser.add_argument('--checkpoint-interval', type=int, default=2000, help='Checkpoint interval (episodes)')
+    parser.add_argument('--checkpoint-interval', type=int, default=10000, help='Checkpoint interval (episodes)')
     parser.add_argument('--checkpoint-path', type=str, default='', help='Load model checkpoint')
     parser.add_argument('--restore', action='store_true', help='restores model from checkpoint')
     parser.add_argument('--experience-replay', type=str, default='', help='Load experience replay')
@@ -397,7 +416,7 @@ def main():
     if not(os.path.exists(logdir)):
         os.makedirs(logdir)
 
-    random.seed(seed)
+    random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
 
