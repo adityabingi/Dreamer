@@ -135,8 +135,19 @@ class Dreamer:
         prior_dist = self.rssm.get_dist(prior['mean'], prior['std'])
         post_dist = self.rssm.get_dist(self.posterior['mean'], self.posterior['std'])
 
-        kl_loss = torch.mean(distributions.kl.kl_divergence(post_dist, prior_dist))
-        kl_loss = torch.max(kl_loss, kl_loss.new_full(kl_loss.size(), self.args.free_nats))
+        if self.args.algo == 'Dreamerv2':
+            post_no_grad = self.rssm.detach_state(self.posterior)
+            prior_no_grad = self.rssm.detach_state(prior)
+            post_mean_no_grad, post_std_no_grad = post_no_grad['mean'], post_no_grad['std']
+            prior_mean_no_grad, prior_std_no_grad = prior_no_grad['mean'], prior_no_grad['std']
+            
+            kl_loss = self.args.kl_alpha *(torch.mean(distributions.kl.kl_divergence(
+                               self.rssm.get_dist(post_mean_no_grad, post_std_no_grad), prior_dist)))
+            kl_loss += (1-self.args.kl_alpha) * (torch.mean(distributions.kl.kl_divergence(
+                               post_dist, self.rssm.get_dist(prior_mean_no_grad, prior_std_no_grad))))
+        else:
+            kl_loss = torch.mean(distributions.kl.kl_divergence(post_dist, prior_dist))
+            kl_loss = torch.max(kl_loss, kl_loss.new_full(kl_loss.size(), self.args.free_nats))
 
         obs_loss = -torch.mean(obs_dist.log_prob(obs[1:])) 
         rew_loss = -torch.mean(rew_dist.log_prob(rews[:-1]))
@@ -348,6 +359,7 @@ def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--env', type=str, default='walker_walk', help='Control Suite environment')
+    parser.add_argument('--algo', type=str, default='Dreamerv1', choices=['Dreamerv1', 'Dreamerv2'], help='choosing algorithm')
     parser.add_argument('--exp-name', type=str, default='lr1e-3', help='name of experiment for logging')
     parser.add_argument('--train', action='store_true', help='trains the model')
     parser.add_argument('--evaluate', action='store_true', help='tests the model')
@@ -381,10 +393,11 @@ def main():
     parser.add_argument('--discount', type=float, default=0.99, help='discount factor for actor critic')
     parser.add_argument('--td-lambda', type=float, default=0.95, help='discount rate to compute return')
     parser.add_argument('--kl-loss-coeff', type=float, default=1.0, help='weightage for kl_loss of model')
+    parser.add_argument('--kl-alpha', type=float, default=0.8, help='kl balancing weight; used for Dreamerv2')
     parser.add_argument('--disc-loss-coeff', type=float, default=10.0, help='weightage of discount model')
     
     # Optimizer Parameters
-    parser.add_argument('--model_learning-rate', type=float, default=1e-3, help='World Model Learning rate') 
+    parser.add_argument('--model_learning-rate', type=float, default=6e-4, help='World Model Learning rate') 
     parser.add_argument('--actor_learning-rate', type=float, default=8e-5, help='Actor Learning rate') 
     parser.add_argument('--value_learning-rate', type=float, default=8e-5, help='Value Model Learning rate')
     parser.add_argument('--adam-epsilon', type=float, default=1e-7, help='Adam optimizer epsilon value') 
@@ -411,7 +424,7 @@ def main():
     if not (os.path.exists(data_path)):
         os.makedirs(data_path)
 
-    logdir = args.env + '_' + args.exp_name + '_' + time.strftime("%d-%m-%Y-%H-%M-%S")
+    logdir = args.env + '_' + args.algo + '_' + args.exp_name + '_' + time.strftime("%d-%m-%Y-%H-%M-%S")
     logdir = os.path.join(data_path, logdir)
     if not(os.path.exists(logdir)):
         os.makedirs(logdir)
