@@ -81,14 +81,9 @@ class Logger:
                 videos[i] = np.concatenate([videos[i], padding], 0)
 
             clip = mpy.ImageSequenceClip(list(videos[i]), fps=fps)
-            txt_clip = (mpy.TextClip(video_title, fontsize=10,color='white')
-                                   .set_position('top', 'center')
-                                   .set_duration(10))
-            
-            video = mpy.CompositeVideoClip([clip, txt_clip])
-            new_video_title = video_title+'{}_{}'.format(step, i) + '.mp4'
+            new_video_title = video_title+'{}_{}'.format(step, i) + '.gif'
             filename = os.path.join(self._log_dir, new_video_title)
-            video.write_videofile(filename, fps =fps)
+            video.write_gif(filename, fps =fps)
 
 
     def dump_scalars_to_pickle(self, metrics, step, log_title=None):
@@ -101,7 +96,7 @@ class Logger:
 
 def compute_return(rewards, values, discounts, td_lam, last_value):
 
-    next_values = torch.cat([values[1:], last_value.unsqueeze(0)],0)
+    next_values = torch.cat([values[1:], last_value.unsqueeze(0)],0)  
     targets = rewards + discounts * next_values * (1-td_lam)
     rets =[]
     last_rew = last_value
