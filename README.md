@@ -6,13 +6,13 @@ This work is my attempt at reproducing Dreamerv1 & v2 papers in pytorch specific
 
 #### Noteworthy differences from original and prior works:
 
- 1. This work compares Dreamer and Dreamerv2 agents for continuous control tasks only. Only KL-Balancing is used for dreamerv2 and policy type remains the same as dreamerv1 i.e. Tanh transformed MultivariateNormalDiag distribution policy.
+ 1. This work compares Dreamer and Dreamerv2 agents for continuous control tasks only. Only KL-Balancing is used for dreamerv2 and policy type remains the same as dreamerv1 i.e. Tanh transformed MultivariateNormalDiag distribution.
  2. This work doesn't train dreamerv1 and v2 for 2M timesteps as did in the papers, instead both the agents are trained till 100K timesteps.
- 3. All experiments are carried out on free single GPUs(Tesla T4) on google colab. Training time on Tesla T4 for 100K frames ~ 3 Hrs
+ 3. All experiments are carried out on free single GPUs(Tesla T4) on google colab. Training time on Tesla T4 for 100K timesteps ~ 3 Hrs
  4. Due to limited computational resources (colab strict timeouts) results produced here are for five control tasks and are run for single seed only. 
  5. Hence plot_results are produced by running agents for 10 eval episodes for single seed. A fair evaluation would require running experiments for multiple seeds, this repo serves as a working implementation for both agents.
 
-Evaluated agents are shown below Left to Right (cartpole-balance, walker-stand, cartpole-swingup, walker-walk, cheetah-run) after training till 100K frames  
+Evaluated agents are shown below Left to Right (cartpole-balance, walker-stand, cartpole-swingup, walker-walk, cheetah-run) after training till 100K timesteps 
 
 |Dreamerv1 | Dreamerv2 |
 | ---| ---|
