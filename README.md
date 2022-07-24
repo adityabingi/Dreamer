@@ -57,7 +57,7 @@ Evaluation results after traning for 100k steps, average returns and standard de
 | cheetah-run| 234.6 ± 92.67 | 321.6 ± 8.91 |
 
 Training Plots:
-Training Returns at every 1000 steps i.e after each episode
+Training Returns plotted against environment timesteps
 ![dreamer_train](results/dreamer_train.jpg)
 
 Evaluation Plots:
