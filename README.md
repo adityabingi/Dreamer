@@ -42,7 +42,7 @@ All the hyperparameters are listed in main.py and are avaialble as command line 
 #### For Evaluation
 `python dreamer.py --env 'walker-walk' --algo 'Dreamerv1' --exp 'eval' --evaluate --restore --checkpoint_path '<your_ckpt_path>'`
 ### Google_Colab
- I have added a colab file [![Open Dreamer in Colab](https://colab.research.google.com/drive/17C4w5-LVK_xiLjcLMrFNY_PwncHW-QfL?usp=sharing)  to train and evaluate on freely avilable GPUs on google colab for quick reproducilibilty.
+ I have added a colab file [![Open Dreamer in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/17C4w5-LVK_xiLjcLMrFNY_PwncHW-QfL?usp=sharing)  to train and evaluate on freely avilable GPUs on google colab for quick reproducilibilty.
 
 ## Plot Results
 Training and Evaluation results for dreamerv1 and v2 agents
