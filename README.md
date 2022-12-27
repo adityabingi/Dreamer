@@ -12,11 +12,12 @@ This work is my attempt at reproducing Dreamerv1 & v2 papers in pytorch specific
  4. Due to limited computational resources (colab strict timeouts) results produced here are for five control tasks and are run for single seed only. 
  5. Hence plot_results are produced by running agents for 10 eval episodes for single seed. A fair evaluation would require running experiments for multiple seeds, this repo serves as a working implementation for both agents.
 
-Evaluated agents are shown below Left to Right (cartpole-balance, walker-stand, cartpole-swingup, walker-walk, cheetah-run) after training till 100K timesteps 
+Evaluated agents Left: Dreamerv1,  Right:Dreamerv2 after training for 100K timesteps. 
 
-|Dreamerv1 | Dreamerv2 |
-| ---| ---|
-|![dreamer](results/dreamer.gif)|![dreamerv2](results/dreamerv2.gif)|
+<p align="center">
+  <img width="35%" src="https://github.com/adityabingi/Dreamer/blob/main/results/dreamer.gif">
+  <img width="35%" src="https://github.com/adityabingi/Dreamer/blob/main/results/dreamerv2.gif">
+</p>
 
 For further information regarding methodology and experiments refer these papers
 1. [Dreamerv1 - DREAM TO CONTROL: LEARNING BEHAVIORS BY LATENT IMAGINATION](https://arxiv.org/pdf/1912.01603.pdf)
